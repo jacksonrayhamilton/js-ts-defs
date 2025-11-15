@@ -1505,6 +1505,98 @@ Like `equal' but also compares hash table contents."
       (should (string= (cadr err)
                        (format-message "Definition not found for `arguments'"))))))
 
+(ert-deftest js-ts-defs-test-mark-ring-with-set-mark-command ()
+  "Test that jumping to definition pushes mark so we can pop back with set-mark-command."
+  (with-temp-buffer
+    (insert "function greet(name) {\n")
+    (insert "  let message = 'Hello, ' + name;\n")
+    (insert "  return message;\n")
+    (insert "}\n")
+
+    ;; Enable js-ts-mode
+    (js-ts-mode)
+
+    ;; Position point on the usage of 'message' at the return statement
+    (goto-char (point-min))
+    (search-forward "return message")
+    (backward-word)
+    (let ((original-pos (point)))
+      ;; Jump to the definition
+      (js-ts-defs-jump-to-definition)
+      (let ((definition-pos (point)))
+        ;; Verify we moved to the definition
+        (should (< definition-pos original-pos))
+        (should (looking-at "message"))
+
+        ;; Pop the mark using set-mark-command with prefix arg (simulating C-u C-SPC)
+        (set-mark-command t)
+
+        ;; Verify we're back at the original position
+        (should (= (point) original-pos))))))
+
+(ert-deftest js-ts-defs-test-mark-ring-with-cua-set-mark ()
+  "Test that jumping to definition pushes mark so we can pop back with cua-set-mark."
+  (require 'cua-base)
+  (with-temp-buffer
+    (insert "function greet(name) {\n")
+    (insert "  let message = 'Hello, ' + name;\n")
+    (insert "  return message;\n")
+    (insert "}\n")
+
+    ;; Enable js-ts-mode
+    (js-ts-mode)
+
+    ;; Position point on the usage of 'message' at the return statement
+    (goto-char (point-min))
+    (search-forward "return message")
+    (backward-word)
+    (let ((original-pos (point)))
+      ;; Jump to the definition
+      (js-ts-defs-jump-to-definition)
+      (let ((definition-pos (point)))
+        ;; Verify we moved to the definition
+        (should (< definition-pos original-pos))
+        (should (looking-at "message"))
+
+        ;; Pop the mark using cua-set-mark with prefix arg (simulating C-u C-SPC in CUA mode)
+        (cua-set-mark t)
+
+        ;; Verify we're back at the original position
+        (should (= (point) original-pos))))))
+
+(ert-deftest js-ts-defs-test-mark-ring-with-active-region ()
+  "Test that jumping with an active region doesn't push a mark."
+  (with-temp-buffer
+    (insert "function greet(name) {\n")
+    (insert "  let message = 'Hello, ' + name;\n")
+    (insert "  return message;\n")
+    (insert "}\n")
+
+    ;; Enable js-ts-mode and transient-mark-mode
+    (js-ts-mode)
+    (transient-mark-mode 1)
+
+    ;; Position point on the usage of 'message' at the return statement
+    (goto-char (point-min))
+    (search-forward "return message")
+    (backward-word)
+
+    ;; Activate the region
+    (set-mark (point))       ; Set mark
+    (activate-mark)          ; Explicitly activate it
+    (forward-char 3)         ; Move point to create a region
+
+    ;; Verify region is active
+    (should (region-active-p))
+
+    ;; Save the mark ring length before jumping
+    (let ((mark-ring-length-before (length mark-ring)))
+      ;; Jump to definition (should not push mark because region is active)
+      (js-ts-defs-jump-to-definition)
+
+      ;; Verify the mark ring length didn't change
+      (should (= (length mark-ring) mark-ring-length-before)))))
+
 (provide 'js-ts-defs-test)
 
 ;;; js-ts-defs-test.el ends here

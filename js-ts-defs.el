@@ -638,7 +638,11 @@ Argument _ is ignored (used for tree-sitter callback compatibility)."
            (definition-pos (js-ts-defs-find-definition scope identifier (point))))
 
       (if definition-pos
-          (goto-char definition-pos)
+          (progn
+            ;; Like `xref-find-definitions', save the user's last position so
+            ;; it's easy to return with `set-mark-command' or `cua-set-mark'.
+            (unless (region-active-p) (push-mark nil t))
+            (goto-char definition-pos))
         ;; Special case for "arguments" - check if we're ultimately in a
         ;; non-arrow function scope
         (if (and (string= identifier "arguments")
