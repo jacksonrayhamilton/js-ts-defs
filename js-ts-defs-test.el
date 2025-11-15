@@ -25,6 +25,7 @@
 
 ;;; Code:
 
+(require 'cua-base)
 (require 'ert)
 (require 'js-ts-defs)
 
@@ -1536,7 +1537,6 @@ Like `equal' but also compares hash table contents."
 
 (ert-deftest js-ts-defs-test-mark-ring-with-cua-set-mark ()
   "Test that jumping to definition pushes mark so we can pop back with cua-set-mark."
-  (require 'cua-base)
   (with-temp-buffer
     (insert "function greet(name) {\n")
     (insert "  let message = 'Hello, ' + name;\n")
