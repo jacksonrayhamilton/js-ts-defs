@@ -50,10 +50,15 @@
 ;;   (add-hook 'js-ts-mode-hook
 ;;             (lambda ()
 ;;               (local-set-key (kbd "M-.") #'js-ts-defs-jump-to-definition)))
+;;
+;; This gives you:
+;;   M-.   Jump to definition
+;;   M-,   Jump back
 
 ;;; Code:
 
 (require 'treesit)
+(require 'xref)
 
 ;; Buffer-local variables for caching
 (defvar-local js-ts-defs--cached-scope nil
@@ -639,8 +644,9 @@ Argument _ is ignored (used for tree-sitter callback compatibility)."
 
       (if definition-pos
           (progn
-            ;; Like `xref-find-definitions', save the user's last position so
-            ;; it's easy to return with `set-mark-command' or `cua-set-mark'.
+            ;; Save the user's last position so it's easy to return with
+            ;; `xref-go-back' (M-,), `set-mark-command' or `cua-set-mark'.
+            (xref-push-marker-stack)
             (unless (region-active-p) (push-mark nil t))
             (goto-char definition-pos))
         ;; Special case for "arguments" - check if we're ultimately in a

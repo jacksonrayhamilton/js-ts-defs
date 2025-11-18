@@ -56,7 +56,7 @@ Before using this package, you need to:
 
 ## Usage
 
-Call `M-x js-ts-defs-jump-to-definition` to jump to the definition of the identifier at point.
+Call `M-x js-ts-defs-jump-to-definition` to jump to the definition of the identifier at point. Use `M-,` to jump back.
 
 ## Recommended Setup
 
@@ -67,6 +67,10 @@ Bind the function to `M-.` in `js-ts-mode`:
           (lambda ()
             (local-set-key (kbd "M-.") #'js-ts-defs-jump-to-definition)))
 ```
+
+This gives you:
+- `M-.` - Jump to definition
+- `M-,` - Jump back
 
 ## API
 

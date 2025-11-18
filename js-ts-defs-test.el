@@ -1597,6 +1597,112 @@ Like `equal' but also compares hash table contents."
       ;; Verify the mark ring length didn't change
       (should (= (length mark-ring) mark-ring-length-before)))))
 
+(ert-deftest js-ts-defs-test-xref-marker-stack ()
+  "Test that jumping to definition integrates with xref to allow popping back with M-,."
+  (with-temp-buffer
+    (insert "function greet(name) {\n")
+    (insert "  let message = 'Hello, ' + name;\n")
+    (insert "  return message;\n")
+    (insert "}\n")
+
+    ;; Enable js-ts-mode
+    (js-ts-mode)
+
+    ;; Position point on the usage of 'message' at the return statement
+    (goto-char (point-min))
+    (search-forward "return message")
+    (backward-word)
+    (let ((original-pos (point)))
+      ;; Jump to the definition
+      (js-ts-defs-jump-to-definition)
+      (let ((definition-pos (point)))
+        ;; Verify we moved to the definition
+        (should (< definition-pos original-pos))
+        (should (looking-at "message"))
+
+        ;; Use xref-go-back (M-,) to go back
+        (xref-go-back)
+
+        ;; Verify we're back at the original position
+        (should (= (point) original-pos))))))
+
+(ert-deftest js-ts-defs-test-xref-marker-stack-multiple-jumps ()
+  "Test that multiple jumps work correctly with xref stack (LIFO order)."
+  (with-temp-buffer
+    (insert "var globalVar = 42;\n")
+    (insert "function outer() {\n")
+    (insert "  let outerVar = globalVar;\n")
+    (insert "  function inner() {\n")
+    (insert "    return outerVar;\n")
+    (insert "  }\n")
+    (insert "}\n")
+
+    ;; Enable js-ts-mode
+    (js-ts-mode)
+
+    ;; First jump: from 'outerVar' usage to its definition
+    (goto-char (point-min))
+    (search-forward "return outerVar")
+    (backward-word)
+    (let ((first-usage-pos (point)))
+      (js-ts-defs-jump-to-definition)
+      (let ((first-def-pos (point)))
+        (should (< first-def-pos first-usage-pos))
+        (should (looking-at "outerVar"))
+
+        ;; Second jump: from 'globalVar' usage to its definition
+        (goto-char (point-min))
+        (search-forward "outerVar = globalVar")
+        (backward-word)
+        (let ((second-usage-pos (point)))
+          (js-ts-defs-jump-to-definition)
+          (let ((second-def-pos (point)))
+            (should (< second-def-pos second-usage-pos))
+            (should (looking-at "globalVar"))
+
+            ;; Pop first marker (should go back to second usage)
+            (xref-go-back)
+            (should (= (point) second-usage-pos))
+
+            ;; Pop second marker (should go back to first usage)
+            (xref-go-back)
+            (should (= (point) first-usage-pos))))))))
+
+(ert-deftest js-ts-defs-test-xref-marker-stack-with-active-region ()
+  "Test that xref allows jumping back even with active region."
+  (with-temp-buffer
+    (insert "function greet(name) {\n")
+    (insert "  let message = 'Hello, ' + name;\n")
+    (insert "  return message;\n")
+    (insert "}\n")
+
+    ;; Enable js-ts-mode and transient-mark-mode
+    (js-ts-mode)
+    (transient-mark-mode 1)
+
+    ;; Position point on the usage of 'message' at the return statement
+    (goto-char (point-min))
+    (search-forward "return message")
+    (backward-word)
+
+    ;; Activate the region
+    (set-mark (point))
+    (activate-mark)
+    (forward-char 3)
+
+    ;; Verify region is active
+    (should (region-active-p))
+
+    (let ((original-pos (point)))
+      ;; Jump to definition
+      (js-ts-defs-jump-to-definition)
+
+      ;; Even with active region, xref should allow jumping back
+      (xref-go-back)
+
+      ;; Verify we're back at the original position
+      (should (= (point) original-pos)))))
+
 (provide 'js-ts-defs-test)
 
 ;;; js-ts-defs-test.el ends here
